@@ -5,18 +5,19 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Trash2, PenLine, Plus, Search, Pin, X, Check, LogOut,
   User, Lock, Sparkles, CloudUpload, Mic, MicOff, Tag,
-  ArrowRight, Star, Folder, Menu, LayoutGrid
+  ArrowRight, Star, Folder, Menu, LayoutGrid, Sun, Moon
 } from "lucide-react";
 import clsx from "clsx";
 import { supabase } from "@/lib/supabaseClient";
 
+// Koyu mod uyumlu renk paleti
 const COLORS = [
-  { id: "yellow", value: "bg-[#fff7d1]", border: "border-[#e6deaf]", text: "text-yellow-900", tag: "bg-yellow-200/50 text-yellow-800" },
-  { id: "green", value: "bg-[#e2f6d3]", border: "border-[#cce5b8]", text: "text-green-900", tag: "bg-green-200/50 text-green-800" },
-  { id: "blue", value: "bg-[#d4ebf7]", border: "border-[#b8d4e5]", text: "text-blue-900", tag: "bg-blue-200/50 text-blue-800" },
-  { id: "purple", value: "bg-[#e9dff5]", border: "border-[#d1c2e0]", text: "text-purple-900", tag: "bg-purple-200/50 text-purple-800" },
-  { id: "pink", value: "bg-[#fbe4e4]", border: "border-[#e8caca]", text: "text-pink-900", tag: "bg-pink-200/50 text-pink-800" },
-  { id: "white", value: "bg-white", border: "border-gray-200", text: "text-gray-800", tag: "bg-gray-100 text-gray-600" },
+  { id: "yellow", value: "bg-[#fff7d1] dark:bg-yellow-900/30", border: "border-[#e6deaf] dark:border-yellow-700/50", text: "text-yellow-900 dark:text-yellow-100", tag: "bg-yellow-200/50 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200" },
+  { id: "green", value: "bg-[#e2f6d3] dark:bg-green-900/30", border: "border-[#cce5b8] dark:border-green-700/50", text: "text-green-900 dark:text-green-100", tag: "bg-green-200/50 dark:bg-green-900/50 text-green-800 dark:text-green-200" },
+  { id: "blue", value: "bg-[#d4ebf7] dark:bg-blue-900/30", border: "border-[#b8d4e5] dark:border-blue-700/50", text: "text-blue-900 dark:text-blue-100", tag: "bg-blue-200/50 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200" },
+  { id: "purple", value: "bg-[#e9dff5] dark:bg-purple-900/30", border: "border-[#d1c2e0] dark:border-purple-700/50", text: "text-purple-900 dark:text-purple-100", tag: "bg-purple-200/50 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200" },
+  { id: "pink", value: "bg-[#fbe4e4] dark:bg-pink-900/30", border: "border-[#e8caca] dark:border-pink-700/50", text: "text-pink-900 dark:text-pink-100", tag: "bg-pink-200/50 dark:bg-pink-900/50 text-pink-800 dark:text-pink-200" },
+  { id: "white", value: "bg-white dark:bg-zinc-800", border: "border-gray-200 dark:border-zinc-700", text: "text-gray-800 dark:text-zinc-200", tag: "bg-gray-100 dark:bg-zinc-700 text-gray-600 dark:text-zinc-300" },
 ];
 
 const CATEGORIES = [
@@ -39,6 +40,9 @@ interface Note {
 }
 
 export default function Home() {
+  // Theme
+  const [theme, setTheme] = useState("light");
+
   // Auth
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [usernameInput, setUsernameInput] = useState("");
@@ -49,7 +53,7 @@ export default function Home() {
 
   // App Data
   const [notes, setNotes] = useState<Note[]>([]);
-  const [activeCategory, setActiveCategory] = useState("Tümü"); // Tümü, Favoriler, veya kategori ismi
+  const [activeCategory, setActiveCategory] = useState("Tümü");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Editor States
@@ -71,6 +75,12 @@ export default function Home() {
     const sessionUser = localStorage.getItem("active_session_user");
     if (sessionUser) setCurrentUser(sessionUser);
 
+    // Sistem temasını kontrol et
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      setTheme("dark");
+      document.documentElement.classList.add("dark");
+    }
+
     const hour = new Date().getHours();
     if (hour < 6) setGreeting("İyi geceler");
     else if (hour < 12) setGreeting("Günaydın");
@@ -85,6 +95,16 @@ export default function Home() {
       fetchNotes();
     }
   }, [currentUser]);
+
+  const toggleTheme = () => {
+    if (theme === "light") {
+      setTheme("dark");
+      document.documentElement.classList.add("dark");
+    } else {
+      setTheme("light");
+      document.documentElement.classList.remove("dark");
+    }
+  };
 
   const fetchNotes = async () => {
     if (!currentUser) return;
@@ -306,73 +326,81 @@ export default function Home() {
 
   if (!currentUser) {
     return (
-      // --- LOGIN SCREEN (AYNI KALDI) ---
-      <main className="min-h-screen flex items-center justify-center p-4 bg-[#fdfcf8] relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-96 h-96 bg-yellow-200/30 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 animate-pulse" />
-        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-purple-200/30 rounded-full blur-3xl translate-x-1/3 translate-y-1/3" />
+      <main className="min-h-screen flex items-center justify-center p-4 bg-[#fdfcf8] dark:bg-zinc-950 relative overflow-hidden transition-colors duration-500">
+        <div className="absolute top-0 left-0 w-96 h-96 bg-yellow-200/30 dark:bg-yellow-900/10 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-purple-200/30 dark:bg-purple-900/10 rounded-full blur-3xl translate-x-1/3 translate-y-1/3" />
+
+        <div className="absolute top-6 right-6 z-20">
+          <button
+            onClick={toggleTheme}
+            className="p-3 bg-white/50 dark:bg-zinc-800/50 backdrop-blur-md rounded-full shadow-sm hover:shadow-md transition-all text-gray-600 dark:text-gray-300"
+          >
+            {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
+          </button>
+        </div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-md bg-white/80 backdrop-blur-xl rounded-3xl shadow-[0_8px_40px_rgba(0,0,0,0.08)] p-8 border border-white/50 relative z-10"
+          className="w-full max-w-md bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl rounded-3xl shadow-[0_8px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_40px_rgba(0,0,0,0.3)] p-8 border border-white/50 dark:border-zinc-800 relative z-10"
         >
           <div className="text-center mb-8">
-            <div className="w-20 h-20 bg-gradient-to-tr from-yellow-100 to-orange-50 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-inner rotate-3 transform hover:rotate-6 transition-transform">
-              <Sparkles className="w-10 h-10 text-yellow-600" />
+            <div className="w-20 h-20 bg-gradient-to-tr from-yellow-100 to-orange-50 dark:from-yellow-900/30 dark:to-orange-900/30 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-inner rotate-3 transform hover:rotate-6 transition-transform">
+              <Sparkles className="w-10 h-10 text-yellow-600 dark:text-yellow-400" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-800 tracking-tight">
+            <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 tracking-tight">
               {isLoginMode ? "Tekrar Hoş Geldin" : "Hesap Oluştur"}
             </h1>
-            <p className="text-gray-500 mt-3 text-lg font-light">
+            <p className="text-gray-500 dark:text-gray-400 mt-3 text-lg font-light">
               {isLoginMode ? "Kaldığın yerden devam et." : "Düşüncelerini özgürleştirmek için katıl."}
             </p>
           </div>
 
           <form onSubmit={handleAuth} className="space-y-5">
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-600 ml-1">Kullanıcı Adı</label>
+              <label className="text-sm font-semibold text-gray-600 dark:text-gray-400 ml-1">Kullanıcı Adı</label>
               <div className="relative group">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-yellow-500 transition-colors" />
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500 group-focus-within:text-yellow-500 transition-colors" />
                 <input
                   type="text"
                   value={usernameInput}
                   onChange={(e) => setUsernameInput(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 bg-gray-50/50 border border-gray-200 rounded-2xl outline-none focus:border-yellow-400 focus:bg-white focus:ring-4 focus:ring-yellow-100/50 transition-all font-medium text-gray-700"
+                  className="w-full pl-12 pr-4 py-4 bg-gray-50/50 dark:bg-zinc-800/50 border border-gray-200 dark:border-zinc-700 rounded-2xl outline-none focus:border-yellow-400 dark:focus:border-yellow-600 focus:bg-white dark:focus:bg-zinc-800 focus:ring-4 focus:ring-yellow-100/50 dark:focus:ring-yellow-900/20 transition-all font-medium text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-zinc-600"
                   placeholder="Kullanıcı adı"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-600 ml-1">Şifre</label>
+              <label className="text-sm font-semibold text-gray-600 dark:text-gray-400 ml-1">Şifre</label>
               <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-yellow-500 transition-colors" />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500 group-focus-within:text-yellow-500 transition-colors" />
                 <input
                   type="password"
                   value={passwordInput}
                   onChange={(e) => setPasswordInput(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 bg-gray-50/50 border border-gray-200 rounded-2xl outline-none focus:border-yellow-400 focus:bg-white focus:ring-4 focus:ring-yellow-100/50 transition-all font-medium text-gray-700"
+                  className="w-full pl-12 pr-4 py-4 bg-gray-50/50 dark:bg-zinc-800/50 border border-gray-200 dark:border-zinc-700 rounded-2xl outline-none focus:border-yellow-400 dark:focus:border-yellow-600 focus:bg-white dark:focus:bg-zinc-800 focus:ring-4 focus:ring-yellow-100/50 dark:focus:ring-yellow-900/20 transition-all font-medium text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-zinc-600"
                   placeholder="••••••••"
                 />
               </div>
             </div>
 
             {loginError && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="text-red-500 text-sm text-center font-medium bg-red-50 py-3 rounded-xl border border-red-100">
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="text-red-500 dark:text-red-400 text-sm text-center font-medium bg-red-50 dark:bg-red-900/20 py-3 rounded-xl border border-red-100 dark:border-red-900/30">
                 {loginError}
               </motion.div>
             )}
 
             <button
               type="submit"
-              className="w-full bg-gray-900 text-white py-4 rounded-2xl font-semibold text-lg hover:bg-black hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-gray-200 mt-4 flex items-center justify-center gap-2 group"
+              className="w-full bg-gray-900 dark:bg-yellow-500 text-white dark:text-yellow-950 py-4 rounded-2xl font-semibold text-lg hover:bg-black dark:hover:bg-yellow-400 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-gray-200 dark:shadow-none mt-4 flex items-center justify-center gap-2 group"
             >
               {isLoginMode ? "Giriş Yap" : "Kayıt Ol"}
               <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
             </button>
           </form>
 
-          <div className="mt-8 text-center border-t border-gray-100 pt-6">
+          <div className="mt-8 text-center border-t border-gray-100 dark:border-zinc-800 pt-6">
             <button
               onClick={() => {
                 setIsLoginMode(!isLoginMode);
@@ -380,7 +408,7 @@ export default function Home() {
                 setUsernameInput("");
                 setPasswordInput("");
               }}
-              className="text-gray-500 hover:text-yellow-600 font-medium transition-colors text-sm"
+              className="text-gray-500 dark:text-gray-400 hover:text-yellow-600 dark:hover:text-yellow-400 font-medium transition-colors text-sm"
             >
               {isLoginMode ? "Hesabın yok mu? Kayıt Ol" : "Zaten hesabın var mı? Giriş Yap"}
             </button>
@@ -391,21 +419,21 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen flex bg-[#fdfcf8] selection:bg-yellow-100 selection:text-yellow-900">
+    <div className="min-h-screen flex bg-[#fdfcf8] dark:bg-zinc-950 selection:bg-yellow-100 dark:selection:bg-yellow-900/30 selection:text-yellow-900 dark:selection:text-yellow-200 transition-colors duration-500">
       {/* --- SIDEBAR --- */}
       <motion.aside
         initial={{ x: -300 }}
         animate={{ x: 0 }}
         className={clsx(
-          "fixed md:sticky top-0 h-screen w-64 bg-white border-r border-gray-100 p-6 flex flex-col z-50 transition-transform duration-300",
+          "fixed md:sticky top-0 h-screen w-64 bg-white dark:bg-zinc-900 border-r border-gray-100 dark:border-zinc-800 p-6 flex flex-col z-50 transition-all duration-300",
           !isSidebarOpen && "hidden md:flex"
         )}
       >
         <div className="flex items-center gap-3 mb-10">
-          <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-300 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-md">
+          <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-300 dark:from-yellow-600 dark:to-orange-700 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-md">
             N
           </div>
-          <span className="font-bold text-xl text-gray-800">Notlarım</span>
+          <span className="font-bold text-xl text-gray-800 dark:text-gray-100">Notlarım</span>
           <button
             className="md:hidden ml-auto p-1 text-gray-400"
             onClick={() => setIsSidebarOpen(false)}
@@ -419,7 +447,7 @@ export default function Home() {
             onClick={() => setActiveCategory("Tümü")}
             className={clsx(
               "w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all text-sm",
-              activeCategory === "Tümü" ? "bg-gray-900 text-white shadow-lg shadow-gray-200" : "text-gray-600 hover:bg-gray-50"
+              activeCategory === "Tümü" ? "bg-gray-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-lg shadow-gray-200 dark:shadow-none" : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-800"
             )}
           >
             <LayoutGrid size={18} /> Tüm Notlar
@@ -429,13 +457,13 @@ export default function Home() {
             onClick={() => setActiveCategory("Favoriler")}
             className={clsx(
               "w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all text-sm",
-              activeCategory === "Favoriler" ? "bg-yellow-100 text-yellow-800" : "text-gray-600 hover:bg-gray-50"
+              activeCategory === "Favoriler" ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200" : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-800"
             )}
           >
             <Star size={18} className={activeCategory === "Favoriler" ? "fill-current" : ""} /> Favoriler
           </button>
 
-          <div className="pt-6 pb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider pl-4">
+          <div className="pt-6 pb-2 text-xs font-semibold text-gray-400 dark:text-zinc-600 uppercase tracking-wider pl-4">
             Kategoriler
           </div>
 
@@ -445,7 +473,7 @@ export default function Home() {
               onClick={() => setActiveCategory(cat)}
               className={clsx(
                 "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium transition-all text-sm",
-                activeCategory === cat ? "bg-gray-100 text-gray-900" : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+                activeCategory === cat ? "bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-gray-100" : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-800 hover:text-gray-800 dark:hover:text-gray-200"
               )}
             >
               <Folder size={16} /> {cat}
@@ -453,19 +481,19 @@ export default function Home() {
           ))}
         </nav>
 
-        <div className="pt-6 border-t border-gray-100 mt-auto">
+        <div className="pt-6 border-t border-gray-100 dark:border-zinc-800 mt-auto">
           <div className="flex items-center gap-3 mb-4 px-2">
-            <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 text-xs font-bold">
+            <div className="w-8 h-8 bg-gray-100 dark:bg-zinc-800 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 text-xs font-bold">
               {currentUser?.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">{currentUser}</p>
-              <p className="text-xs text-gray-400 truncate">Ücretsiz Plan</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-200 truncate">{currentUser}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 truncate">Ücretsiz Plan</p>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-2 px-2 py-2 text-sm text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            className="w-full flex items-center gap-2 px-2 py-2 text-sm text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
           >
             <LogOut size={16} /> Çıkış Yap
           </button>
@@ -473,32 +501,41 @@ export default function Home() {
       </motion.aside>
 
       {/* --- MAIN CONTENT --- */}
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto h-screen">
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto h-screen relative">
         <header className="flex items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-4">
             <button
-              className="md:hidden p-2 bg-white rounded-xl border border-gray-200 text-gray-600"
+              className="md:hidden p-2 bg-white dark:bg-zinc-800 rounded-xl border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-gray-300"
               onClick={() => setIsSidebarOpen(true)}
             >
               <Menu size={20} />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-800">{activeCategory}</h1>
-              <p className="text-sm text-gray-400 font-medium hidden md:block">
+              <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{activeCategory}</h1>
+              <p className="text-sm text-gray-400 dark:text-gray-500 font-medium hidden md:block">
                 {greeting}, düşüncelerini kaydetmeye hazır mısın?
               </p>
             </div>
           </div>
 
-          <div className="relative w-full max-w-xs md:max-w-md group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-yellow-500 transition-colors" />
-            <input
-              type="text"
-              placeholder="Ara..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-11 pr-4 py-2.5 bg-white border border-gray-200 rounded-full text-sm outline-none focus:border-yellow-400 focus:ring-4 focus:ring-yellow-50 transition-all shadow-sm"
-            />
+          <div className="flex items-center gap-3">
+            <button
+              onClick={toggleTheme}
+              className="p-2.5 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-full text-gray-500 dark:text-gray-400 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors"
+            >
+              {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
+            </button>
+
+            <div className="relative w-full max-w-xs md:max-w-md group hidden sm:block">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-zinc-500 group-focus-within:text-yellow-500 transition-colors" />
+              <input
+                type="text"
+                placeholder="Ara..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-11 pr-4 py-2.5 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-full text-sm outline-none focus:border-yellow-400 dark:focus:border-yellow-600 focus:ring-4 focus:ring-yellow-50 dark:focus:ring-yellow-900/10 transition-all shadow-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-zinc-500"
+              />
+            </div>
           </div>
         </header>
 
@@ -507,7 +544,7 @@ export default function Home() {
           <motion.div
             layout
             className={clsx(
-              "w-full max-w-2xl bg-white rounded-3xl shadow-[0_20px_40px_rgb(0,0,0,0.04)] overflow-hidden border border-gray-100 transition-colors duration-500",
+              "w-full max-w-2xl bg-white dark:bg-zinc-900 rounded-3xl shadow-[0_20px_40px_rgb(0,0,0,0.04)] dark:shadow-[0_20px_40px_rgb(0,0,0,0.2)] overflow-hidden border border-gray-100 dark:border-zinc-800 transition-colors duration-500",
               selectedColor.id !== 'white' && getColorClass(selectedColor.id).value,
               editingNoteId && "ring-4 ring-yellow-400/20"
             )}
@@ -519,29 +556,29 @@ export default function Home() {
                   placeholder="Başlık"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-6 pt-4 pb-2 bg-transparent text-xl font-bold text-gray-800 placeholder-gray-400/60 outline-none"
+                  className="w-full px-6 pt-4 pb-2 bg-transparent text-xl font-bold text-gray-800 dark:text-gray-100 placeholder-gray-400/60 dark:placeholder-zinc-500 outline-none"
                 />
                 <div className="flex items-center mr-4 mt-2 gap-1">
                   <select
                     value={selectedCategory}
                     onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="text-xs bg-black/5 rounded-lg px-2 py-1.5 border-none outline-none text-gray-600 font-medium cursor-pointer hover:bg-black/10 transition-colors mr-2"
+                    className="text-xs bg-black/5 dark:bg-white/10 rounded-lg px-2 py-1.5 border-none outline-none text-gray-600 dark:text-gray-300 font-medium cursor-pointer hover:bg-black/10 dark:hover:bg-white/20 transition-colors mr-2"
                   >
-                    {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                    {CATEGORIES.map(cat => <option key={cat} value={cat} className="text-black bg-white">{cat}</option>)}
                   </select>
 
                   <button
                     onClick={toggleListening}
                     className={clsx(
                       "p-2 rounded-full transition-colors",
-                      isListening ? "bg-red-100 text-red-600 animate-pulse" : "hover:bg-black/5 text-gray-500"
+                      isListening ? "bg-red-100 text-red-600 animate-pulse" : "hover:bg-black/5 dark:hover:bg-white/10 text-gray-500 dark:text-gray-400"
                     )}
                     title="Sesle Yaz"
                   >
                     {isListening ? <MicOff size={18} /> : <Mic size={18} />}
                   </button>
                   {editingNoteId && (
-                    <button onClick={cancelEdit} className="p-2 hover:bg-black/5 rounded-full text-gray-500 transition-colors" title="İptal">
+                    <button onClick={cancelEdit} className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full text-gray-500 dark:text-gray-400 transition-colors" title="İptal">
                       <X size={20} />
                     </button>
                   )}
@@ -554,19 +591,19 @@ export default function Home() {
               value={content}
               onClick={() => setIsInputExpanded(true)}
               onChange={(e) => setContent(e.target.value)}
-              className="w-full px-6 py-5 bg-transparent text-gray-700 placeholder-gray-400/60 resize-none outline-none min-h-[60px] text-lg leading-relaxed"
+              className="w-full px-6 py-5 bg-transparent text-gray-700 dark:text-gray-300 placeholder-gray-400/60 dark:placeholder-zinc-600 resize-none outline-none min-h-[60px] text-lg leading-relaxed"
               rows={isInputExpanded ? 4 : 1}
             />
 
             {isInputExpanded && (
               <div className="px-6 pb-2 flex items-center gap-2">
-                 <Tag size={16} className="text-gray-400" />
+                 <Tag size={16} className="text-gray-400 dark:text-zinc-500" />
                  <input
                    type="text"
                    placeholder="Etiketler (virgülle ayır: iş, fikir)"
                    value={tagsInput}
                    onChange={(e) => setTagsInput(e.target.value)}
-                   className="w-full bg-transparent text-sm text-gray-600 placeholder-gray-400 outline-none"
+                   className="w-full bg-transparent text-sm text-gray-600 dark:text-gray-400 placeholder-gray-400 dark:placeholder-zinc-600 outline-none"
                  />
               </div>
             )}
@@ -577,7 +614,7 @@ export default function Home() {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="px-5 pb-5 flex items-center justify-between pt-2 mx-1 border-t border-black/5 mt-2"
+                  className="px-5 pb-5 flex items-center justify-between pt-2 mx-1 border-t border-black/5 dark:border-white/5 mt-2"
                 >
                   <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                     {COLORS.map((color) => (
@@ -588,11 +625,11 @@ export default function Home() {
                           "w-8 h-8 rounded-full border-2 transition-transform flex-shrink-0 relative",
                           color.value,
                           color.border,
-                          selectedColor.id === color.id ? "scale-110 ring-2 ring-gray-400 ring-offset-2 border-transparent" : "hover:scale-110 border-transparent hover:border-black/10"
+                          selectedColor.id === color.id ? "scale-110 ring-2 ring-gray-400 ring-offset-2 border-transparent" : "hover:scale-110 border-transparent hover:border-black/10 dark:hover:border-white/10"
                         )}
                         title={color.id}
                       >
-                        {selectedColor.id === color.id && <Check size={14} className="absolute inset-0 m-auto text-black/50" />}
+                        {selectedColor.id === color.id && <Check size={14} className="absolute inset-0 m-auto text-black/50 dark:text-white/50" />}
                       </button>
                     ))}
                   </div>
@@ -601,8 +638,8 @@ export default function Home() {
                     className={clsx(
                       "flex items-center gap-2 font-semibold px-6 py-2.5 rounded-full transition-all text-sm shrink-0 ml-4 shadow-lg hover:shadow-xl active:scale-95",
                       editingNoteId
-                        ? "bg-gray-900 text-white hover:bg-black"
-                        : "bg-gray-900 text-white hover:bg-black"
+                        ? "bg-gray-900 dark:bg-yellow-500 text-white dark:text-yellow-950 hover:bg-black dark:hover:bg-yellow-400"
+                        : "bg-gray-900 dark:bg-yellow-500 text-white dark:text-yellow-950 hover:bg-black dark:hover:bg-yellow-400"
                     )}
                   >
                     {editingNoteId ? "Güncelle" : <><Plus size={18} /> Ekle</>}
@@ -631,7 +668,7 @@ export default function Home() {
                     "break-inside-avoid mb-6 relative group rounded-3xl p-6 border shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1",
                     colorStyle.value,
                     colorStyle.border,
-                    note.is_pinned && "ring-2 ring-black/5"
+                    note.is_pinned && "ring-2 ring-black/5 dark:ring-white/10"
                   )}
                 >
                   <div className="absolute top-4 right-4 flex gap-1 z-10">
@@ -644,7 +681,7 @@ export default function Home() {
                         "p-2 rounded-full transition-all duration-200",
                         note.is_favorite
                           ? "bg-yellow-400 text-white shadow-sm"
-                          : "opacity-0 group-hover:opacity-100 hover:bg-black/5 text-gray-400"
+                          : "opacity-0 group-hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 text-gray-400 dark:text-gray-500"
                       )}
                       title="Favorilere Ekle"
                     >
@@ -658,8 +695,8 @@ export default function Home() {
                       className={clsx(
                         "p-2 rounded-full transition-all duration-200",
                         note.is_pinned
-                          ? "bg-black/10 text-gray-800"
-                          : "opacity-0 group-hover:opacity-100 hover:bg-black/5 text-gray-500"
+                          ? "bg-black/10 dark:bg-white/10 text-gray-800 dark:text-gray-200"
+                          : "opacity-0 group-hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 text-gray-500 dark:text-gray-400"
                       )}
                       title="Sabitle"
                     >
@@ -668,7 +705,7 @@ export default function Home() {
                   </div>
 
                   {note.category && note.category !== "Genel" && (
-                    <span className="inline-block text-[10px] font-bold uppercase tracking-wider text-black/40 mb-2">
+                    <span className="inline-block text-[10px] font-bold uppercase tracking-wider text-black/40 dark:text-white/40 mb-2">
                       {note.category}
                     </span>
                   )}
@@ -688,8 +725,8 @@ export default function Home() {
                      </div>
                   )}
 
-                  <div className="mt-6 flex items-center justify-between pt-4 border-t border-black/5">
-                    <span className="text-xs font-semibold opacity-60 flex items-center gap-1.5 uppercase tracking-wide">
+                  <div className="mt-6 flex items-center justify-between pt-4 border-t border-black/5 dark:border-white/5">
+                    <span className="text-xs font-semibold opacity-60 flex items-center gap-1.5 uppercase tracking-wide text-gray-600 dark:text-gray-400">
                       {new Date(note.created_at || Date.now()).toLocaleDateString('tr-TR')}
                     </span>
 
@@ -699,7 +736,7 @@ export default function Home() {
                           e.stopPropagation();
                           shareNote(note);
                         }}
-                        className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50/50 rounded-full transition-colors"
+                        className="p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-300 hover:bg-blue-50/50 dark:hover:bg-blue-900/30 rounded-full transition-colors"
                         title="Paylaş"
                       >
                         <CloudUpload size={18} />
@@ -709,7 +746,7 @@ export default function Home() {
                           e.stopPropagation();
                           startEditing(note);
                         }}
-                        className="p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50/50 rounded-full transition-colors"
+                        className="p-2 text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-300 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/30 rounded-full transition-colors"
                         title="Düzenle"
                       >
                         <PenLine size={18} />
@@ -719,7 +756,7 @@ export default function Home() {
                           e.stopPropagation();
                           deleteNote(note.id);
                         }}
-                        className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50/50 rounded-full transition-colors"
+                        className="p-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-50/50 dark:hover:bg-red-900/30 rounded-full transition-colors"
                         title="Sil"
                       >
                         <Trash2 size={18} />
@@ -737,19 +774,19 @@ export default function Home() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="text-center text-gray-300 mt-20"
+            className="text-center text-gray-300 dark:text-gray-600 mt-20"
           >
-            <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
+            <div className="w-24 h-24 bg-gray-50 dark:bg-zinc-900 rounded-full flex items-center justify-center mx-auto mb-6">
               {searchTerm ? (
-                <Search className="w-10 h-10 opacity-20 text-gray-500" />
+                <Search className="w-10 h-10 opacity-20 text-gray-500 dark:text-gray-400" />
               ) : (
-                <Folder className="w-10 h-10 opacity-20 text-yellow-500" />
+                <Folder className="w-10 h-10 opacity-20 text-yellow-500 dark:text-yellow-600" />
               )}
             </div>
-            <p className="text-lg font-medium text-gray-400">
+            <p className="text-lg font-medium text-gray-400 dark:text-gray-500">
               {searchTerm ? "Sonuç bulunamadı." : "Bu kategoride henüz not yok."}
             </p>
-            {!searchTerm && <p className="text-sm text-gray-300 mt-1">Yeni bir tane eklemeye ne dersin?</p>}
+            {!searchTerm && <p className="text-sm text-gray-300 dark:text-gray-600 mt-1">Yeni bir tane eklemeye ne dersin?</p>}
           </motion.div>
         )}
       </main>
