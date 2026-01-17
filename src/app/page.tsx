@@ -1,17 +1,17 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trash2, PenLine, Plus, Search, Pin, X, Check, LogOut, User, Lock, Sparkles } from "lucide-react";
+import { Trash2, PenLine, Plus, Search, Pin, X, Check, LogOut, User, Lock, Sparkles, Share2, Mic, MicOff, Tag, ArrowRight } from "lucide-react";
 import clsx from "clsx";
 
 const COLORS = [
-  { id: "yellow", value: "bg-[#fff7d1]", border: "border-[#e6deaf]", text: "text-yellow-900" },
-  { id: "green", value: "bg-[#e2f6d3]", border: "border-[#cce5b8]", text: "text-green-900" },
-  { id: "blue", value: "bg-[#d4ebf7]", border: "border-[#b8d4e5]", text: "text-blue-900" },
-  { id: "purple", value: "bg-[#e9dff5]", border: "border-[#d1c2e0]", text: "text-purple-900" },
-  { id: "pink", value: "bg-[#fbe4e4]", border: "border-[#e8caca]", text: "text-pink-900" },
-  { id: "white", value: "bg-white", border: "border-gray-200", text: "text-gray-800" },
+  { id: "yellow", value: "bg-[#fff7d1]", border: "border-[#e6deaf]", text: "text-yellow-900", tag: "bg-yellow-200/50 text-yellow-800" },
+  { id: "green", value: "bg-[#e2f6d3]", border: "border-[#cce5b8]", text: "text-green-900", tag: "bg-green-200/50 text-green-800" },
+  { id: "blue", value: "bg-[#d4ebf7]", border: "border-[#b8d4e5]", text: "text-blue-900", tag: "bg-blue-200/50 text-blue-800" },
+  { id: "purple", value: "bg-[#e9dff5]", border: "border-[#d1c2e0]", text: "text-purple-900", tag: "bg-purple-200/50 text-purple-800" },
+  { id: "pink", value: "bg-[#fbe4e4]", border: "border-[#e8caca]", text: "text-pink-900", tag: "bg-pink-200/50 text-pink-800" },
+  { id: "white", value: "bg-white", border: "border-gray-200", text: "text-gray-800", tag: "bg-gray-100 text-gray-600" },
 ];
 
 interface Note {
@@ -21,6 +21,7 @@ interface Note {
   color: string;
   date: string;
   isPinned?: boolean;
+  tags?: string[];
 }
 
 export default function Home() {
@@ -28,22 +29,28 @@ export default function Home() {
   const [usernameInput, setUsernameInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
   const [loginError, setLoginError] = useState("");
+  const [isLoginMode, setIsLoginMode] = useState(true); // Giriş yap vs Kayıt ol modu
   const [greeting, setGreeting] = useState("");
 
   const [notes, setNotes] = useState<Note[]>([]);
   const [isInputExpanded, setIsInputExpanded] = useState(false);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [tagsInput, setTagsInput] = useState("");
   const [selectedColor, setSelectedColor] = useState(COLORS[0]);
   const [searchTerm, setSearchTerm] = useState("");
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  useEffect(() => {
-    const savedUser = localStorage.getItem("active_user");
-    if (savedUser) setCurrentUser(savedUser);
+  // Sesli Yazma State'leri
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
 
-    // Saate göre selamlama
+  useEffect(() => {
+    // Oturum kontrolü
+    const sessionUser = localStorage.getItem("active_session_user");
+    if (sessionUser) setCurrentUser(sessionUser);
+
     const hour = new Date().getHours();
     if (hour < 6) setGreeting("İyi geceler");
     else if (hour < 12) setGreeting("Günaydın");
@@ -67,27 +74,107 @@ export default function Home() {
     }
   }, [notes, isLoaded, currentUser]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  // Sesli Yazma Entegrasyonu
+  const toggleListening = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+    } else {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.lang = "tr-TR";
+        recognition.continuous = true;
+        recognition.interimResults = true;
+
+        recognition.onresult = (event: any) => {
+          let transcript = "";
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            transcript += event.results[i][0].transcript;
+          }
+          setContent(prev => prev + (prev ? " " : "") + transcript);
+        };
+
+        recognition.onend = () => setIsListening(false);
+        recognition.start();
+        recognitionRef.current = recognition;
+        setIsListening(true);
+      } else {
+        alert("Tarayıcınız sesli yazmayı desteklemiyor.");
+      }
+    }
+  };
+
+  const shareNote = async (note: Note) => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: note.title,
+          text: `${note.title}\n\n${note.content}`,
+        });
+      } catch (error) {
+        console.log("Paylaşım iptal edildi");
+      }
+    } else {
+      navigator.clipboard.writeText(`${note.title}\n\n${note.content}`);
+      alert("Not panoya kopyalandı!");
+    }
+  };
+
+  const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!usernameInput.trim()) {
-      setLoginError("Lütfen bir kullanıcı adı giriniz.");
+    setLoginError("");
+
+    if (!usernameInput.trim() || !passwordInput.trim()) {
+      setLoginError("Lütfen tüm alanları doldurunuz.");
       return;
     }
-    localStorage.setItem("active_user", usernameInput);
-    setCurrentUser(usernameInput);
-    setLoginError("");
+
+    // Kullanıcı veritabanını çek (Local Storage simülasyonu)
+    const usersDb = JSON.parse(localStorage.getItem("app_users_db") || "{}");
+
+    if (isLoginMode) {
+      // --- GİRİŞ YAPMA MANTIĞI ---
+      if (usersDb[usernameInput]) {
+        if (usersDb[usernameInput] === passwordInput) {
+          // Başarılı giriş
+          localStorage.setItem("active_session_user", usernameInput);
+          setCurrentUser(usernameInput);
+        } else {
+          setLoginError("Şifre hatalı. Lütfen tekrar deneyin.");
+        }
+      } else {
+        setLoginError("Böyle bir kullanıcı bulunamadı. Önce kayıt olun.");
+      }
+    } else {
+      // --- KAYIT OLMA MANTIĞI ---
+      if (usersDb[usernameInput]) {
+        setLoginError("Bu kullanıcı adı zaten alınmış.");
+      } else {
+        // Yeni kullanıcı oluştur
+        usersDb[usernameInput] = passwordInput;
+        localStorage.setItem("app_users_db", JSON.stringify(usersDb));
+
+        // Otomatik giriş yap
+        localStorage.setItem("active_session_user", usernameInput);
+        setCurrentUser(usernameInput);
+      }
+    }
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("active_user");
+    localStorage.removeItem("active_session_user");
     setCurrentUser(null);
     setNotes([]);
     setUsernameInput("");
     setPasswordInput("");
+    setLoginError("");
   };
 
   const addNote = () => {
     if (!content.trim() && !title.trim()) return;
+
+    const tags = tagsInput.split(',').map(t => t.trim()).filter(t => t.length > 0);
 
     if (editingNoteId) {
       setNotes(notes.map(n => n.id === editingNoteId ? {
@@ -95,6 +182,7 @@ export default function Home() {
         title,
         content,
         color: selectedColor.id,
+        tags: tags.length > 0 ? tags : n.tags
       } : n));
       setEditingNoteId(null);
     } else {
@@ -105,11 +193,13 @@ export default function Home() {
         color: selectedColor.id,
         date: new Date().toLocaleDateString("tr-TR"),
         isPinned: false,
+        tags: tags
       };
       setNotes([newNote, ...notes]);
     }
     setTitle("");
     setContent("");
+    setTagsInput("");
     setIsInputExpanded(false);
     setSelectedColor(COLORS[0]);
   };
@@ -125,6 +215,7 @@ export default function Home() {
   const startEditing = (note: Note) => {
     setTitle(note.title);
     setContent(note.content);
+    setTagsInput(note.tags?.join(', ') || "");
     setSelectedColor(COLORS.find(c => c.id === note.color) || COLORS[0]);
     setEditingNoteId(note.id);
     setIsInputExpanded(true);
@@ -134,6 +225,7 @@ export default function Home() {
   const cancelEdit = () => {
     setTitle("");
     setContent("");
+    setTagsInput("");
     setEditingNoteId(null);
     setIsInputExpanded(false);
     setSelectedColor(COLORS[0]);
@@ -143,7 +235,8 @@ export default function Home() {
     return notes
       .filter(note =>
         note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        note.content.toLowerCase().includes(searchTerm.toLowerCase())
+        note.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        note.tags?.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
       )
       .sort((a, b) => {
         if (a.isPinned && !b.isPinned) return -1;
@@ -159,7 +252,6 @@ export default function Home() {
   if (!currentUser) {
     return (
       <main className="min-h-screen flex items-center justify-center p-4 bg-[#fdfcf8] relative overflow-hidden">
-        {/* Dekoratif Arkaplan Blob'ları */}
         <div className="absolute top-0 left-0 w-96 h-96 bg-yellow-200/30 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 animate-pulse" />
         <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-purple-200/30 rounded-full blur-3xl translate-x-1/3 translate-y-1/3" />
 
@@ -169,15 +261,19 @@ export default function Home() {
           transition={{ duration: 0.5 }}
           className="w-full max-w-md bg-white/80 backdrop-blur-xl rounded-3xl shadow-[0_8px_40px_rgba(0,0,0,0.08)] p-8 border border-white/50 relative z-10"
         >
-          <div className="text-center mb-10">
+          <div className="text-center mb-8">
             <div className="w-20 h-20 bg-gradient-to-tr from-yellow-100 to-orange-50 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-inner rotate-3 transform hover:rotate-6 transition-transform">
               <Sparkles className="w-10 h-10 text-yellow-600" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-800 tracking-tight">Hoş Geldiniz</h1>
-            <p className="text-gray-500 mt-3 text-lg font-light">Düşüncelerinizi saklamanın<br/>en zarif yolu.</p>
+            <h1 className="text-3xl font-bold text-gray-800 tracking-tight">
+              {isLoginMode ? "Tekrar Hoş Geldin" : "Hesap Oluştur"}
+            </h1>
+            <p className="text-gray-500 mt-3 text-lg font-light">
+              {isLoginMode ? "Kaldığın yerden devam et." : "Düşüncelerini özgürleştirmek için katıl."}
+            </p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-5">
+          <form onSubmit={handleAuth} className="space-y-5">
             <div className="space-y-2">
               <label className="text-sm font-semibold text-gray-600 ml-1">Kullanıcı Adı</label>
               <div className="relative group">
@@ -187,7 +283,7 @@ export default function Home() {
                   value={usernameInput}
                   onChange={(e) => setUsernameInput(e.target.value)}
                   className="w-full pl-12 pr-4 py-4 bg-gray-50/50 border border-gray-200 rounded-2xl outline-none focus:border-yellow-400 focus:bg-white focus:ring-4 focus:ring-yellow-100/50 transition-all font-medium text-gray-700"
-                  placeholder="örn. anil"
+                  placeholder="Kullanıcı adı"
                 />
               </div>
             </div>
@@ -207,18 +303,33 @@ export default function Home() {
             </div>
 
             {loginError && (
-              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-red-500 text-sm text-center font-medium bg-red-50 py-2 rounded-lg">
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="text-red-500 text-sm text-center font-medium bg-red-50 py-3 rounded-xl border border-red-100">
                 {loginError}
-              </motion.p>
+              </motion.div>
             )}
 
             <button
               type="submit"
-              className="w-full bg-gray-900 text-white py-4 rounded-2xl font-semibold text-lg hover:bg-black hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-gray-200 mt-4"
+              className="w-full bg-gray-900 text-white py-4 rounded-2xl font-semibold text-lg hover:bg-black hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-gray-200 mt-4 flex items-center justify-center gap-2 group"
             >
-              Giriş Yap
+              {isLoginMode ? "Giriş Yap" : "Kayıt Ol"}
+              <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
             </button>
           </form>
+
+          <div className="mt-8 text-center border-t border-gray-100 pt-6">
+            <button
+              onClick={() => {
+                setIsLoginMode(!isLoginMode);
+                setLoginError("");
+                setUsernameInput("");
+                setPasswordInput("");
+              }}
+              className="text-gray-500 hover:text-yellow-600 font-medium transition-colors text-sm"
+            >
+              {isLoginMode ? "Hesabın yok mu? Kayıt Ol" : "Zaten hesabın var mı? Giriş Yap"}
+            </button>
+          </div>
         </motion.div>
       </main>
     );
@@ -246,7 +357,7 @@ export default function Home() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-yellow-500 transition-colors" />
             <input
               type="text"
-              placeholder="Notlarını ara..."
+              placeholder="Not veya #etiket ara..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-11 pr-4 py-2.5 bg-white border border-gray-200 rounded-full text-sm outline-none focus:border-yellow-400 focus:ring-4 focus:ring-yellow-50 transition-all shadow-sm"
@@ -280,11 +391,24 @@ export default function Home() {
                 onChange={(e) => setTitle(e.target.value)}
                 className="w-full px-6 pt-6 pb-2 bg-transparent text-xl font-bold text-gray-800 placeholder-gray-400/60 outline-none"
               />
-              {editingNoteId && (
-                <button onClick={cancelEdit} className="mr-5 mt-4 p-2 hover:bg-black/5 rounded-full text-gray-500 transition-colors" title="İptal">
-                  <X size={20} />
+              <div className="flex items-center mr-4 mt-4">
+                 {/* Sesli Yazma Butonu */}
+                <button
+                  onClick={toggleListening}
+                  className={clsx(
+                    "p-2 rounded-full transition-colors mr-2",
+                    isListening ? "bg-red-100 text-red-600 animate-pulse" : "hover:bg-black/5 text-gray-500"
+                  )}
+                  title="Sesle Yaz"
+                >
+                  {isListening ? <MicOff size={20} /> : <Mic size={20} />}
                 </button>
-              )}
+                {editingNoteId && (
+                  <button onClick={cancelEdit} className="p-2 hover:bg-black/5 rounded-full text-gray-500 transition-colors" title="İptal">
+                    <X size={20} />
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -297,13 +421,26 @@ export default function Home() {
             rows={isInputExpanded ? 4 : 1}
           />
 
+          {isInputExpanded && (
+            <div className="px-6 pb-2 flex items-center gap-2">
+               <Tag size={16} className="text-gray-400" />
+               <input
+                 type="text"
+                 placeholder="Etiketler (virgülle ayır: iş, fikir)"
+                 value={tagsInput}
+                 onChange={(e) => setTagsInput(e.target.value)}
+                 className="w-full bg-transparent text-sm text-gray-600 placeholder-gray-400 outline-none"
+               />
+            </div>
+          )}
+
           <AnimatePresence>
             {isInputExpanded && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="px-5 pb-5 flex items-center justify-between pt-2 mx-1"
+                className="px-5 pb-5 flex items-center justify-between pt-2 mx-1 border-t border-black/5 mt-2"
               >
                 <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                   {COLORS.map((color) => (
@@ -360,6 +497,7 @@ export default function Home() {
                   note.isPinned && "ring-2 ring-black/5"
                 )}
               >
+                {/* Pin Butonu */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -381,6 +519,17 @@ export default function Home() {
                 )}
                 <p className={clsx("whitespace-pre-wrap leading-relaxed text-[15px]", colorStyle.text, "opacity-90")}>{note.content}</p>
 
+                {/* Etiketler */}
+                {note.tags && note.tags.length > 0 && (
+                   <div className="flex flex-wrap gap-2 mt-4">
+                     {note.tags.map((tag, i) => (
+                       <span key={i} className={clsx("text-[10px] px-2 py-1 rounded-md font-medium uppercase tracking-wider", colorStyle.tag)}>
+                         #{tag}
+                       </span>
+                     ))}
+                   </div>
+                )}
+
                 <div className="mt-6 flex items-center justify-between pt-4 border-t border-black/5">
                   <span className="text-xs font-semibold opacity-60 flex items-center gap-1.5 uppercase tracking-wide">
                     {note.date}
@@ -388,6 +537,16 @@ export default function Home() {
                   </span>
 
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                     <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        shareNote(note);
+                      }}
+                      className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50/50 rounded-full transition-colors"
+                      title="Apple Notlar'da Paylaş"
+                    >
+                      <Share2 size={16} />
+                    </button>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
