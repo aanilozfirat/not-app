@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trash2, PenLine, Plus, Search, Pin, X, Check, LogOut, User, Lock, Sparkles, Share2, Mic, MicOff, Tag, ArrowRight } from "lucide-react";
+import { Trash2, PenLine, Plus, Search, Pin, X, Check, LogOut, User, Lock, Sparkles, CloudUpload, Mic, MicOff, Tag, ArrowRight } from "lucide-react";
 import clsx from "clsx";
 
 const COLORS = [
@@ -29,7 +29,7 @@ export default function Home() {
   const [usernameInput, setUsernameInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
   const [loginError, setLoginError] = useState("");
-  const [isLoginMode, setIsLoginMode] = useState(true); // Giriş yap vs Kayıt ol modu
+  const [isLoginMode, setIsLoginMode] = useState(true);
   const [greeting, setGreeting] = useState("");
 
   const [notes, setNotes] = useState<Note[]>([]);
@@ -42,12 +42,10 @@ export default function Home() {
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Sesli Yazma State'leri
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
-    // Oturum kontrolü
     const sessionUser = localStorage.getItem("active_session_user");
     if (sessionUser) setCurrentUser(sessionUser);
 
@@ -74,7 +72,6 @@ export default function Home() {
     }
   }, [notes, isLoaded, currentUser]);
 
-  // Sesli Yazma Entegrasyonu
   const toggleListening = () => {
     if (isListening) {
       recognitionRef.current?.stop();
@@ -106,18 +103,21 @@ export default function Home() {
   };
 
   const shareNote = async (note: Note) => {
+    // Apple Notes: İlk satırı başlık olarak algılar
+    const shareData = {
+      title: note.title,
+      text: `${note.title}\n${note.content}`, // Başlık ve içerik arasında tek satır boşluk
+    };
+
     if (navigator.share) {
       try {
-        await navigator.share({
-          title: note.title,
-          text: `${note.title}\n\n${note.content}`,
-        });
+        await navigator.share(shareData);
       } catch (error) {
         console.log("Paylaşım iptal edildi");
       }
     } else {
-      navigator.clipboard.writeText(`${note.title}\n\n${note.content}`);
-      alert("Not panoya kopyalandı!");
+      navigator.clipboard.writeText(shareData.text);
+      alert("Not kopyalandı! Şimdi Apple Notlar'ı açıp yapıştırabilirsiniz.");
     }
   };
 
@@ -130,14 +130,11 @@ export default function Home() {
       return;
     }
 
-    // Kullanıcı veritabanını çek (Local Storage simülasyonu)
     const usersDb = JSON.parse(localStorage.getItem("app_users_db") || "{}");
 
     if (isLoginMode) {
-      // --- GİRİŞ YAPMA MANTIĞI ---
       if (usersDb[usernameInput]) {
         if (usersDb[usernameInput] === passwordInput) {
-          // Başarılı giriş
           localStorage.setItem("active_session_user", usernameInput);
           setCurrentUser(usernameInput);
         } else {
@@ -147,15 +144,11 @@ export default function Home() {
         setLoginError("Böyle bir kullanıcı bulunamadı. Önce kayıt olun.");
       }
     } else {
-      // --- KAYIT OLMA MANTIĞI ---
       if (usersDb[usernameInput]) {
         setLoginError("Bu kullanıcı adı zaten alınmış.");
       } else {
-        // Yeni kullanıcı oluştur
         usersDb[usernameInput] = passwordInput;
         localStorage.setItem("app_users_db", JSON.stringify(usersDb));
-
-        // Otomatik giriş yap
         localStorage.setItem("active_session_user", usernameInput);
         setCurrentUser(usernameInput);
       }
@@ -392,7 +385,6 @@ export default function Home() {
                 className="w-full px-6 pt-6 pb-2 bg-transparent text-xl font-bold text-gray-800 placeholder-gray-400/60 outline-none"
               />
               <div className="flex items-center mr-4 mt-4">
-                 {/* Sesli Yazma Butonu */}
                 <button
                   onClick={toggleListening}
                   className={clsx(
@@ -476,7 +468,6 @@ export default function Home() {
         </motion.div>
       </div>
 
-      {/* Masonry Layout */}
       <div className="masonry-grid pb-20">
         <AnimatePresence mode="popLayout">
           {filteredNotes.map((note) => {
@@ -497,7 +488,6 @@ export default function Home() {
                   note.isPinned && "ring-2 ring-black/5"
                 )}
               >
-                {/* Pin Butonu */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -519,7 +509,6 @@ export default function Home() {
                 )}
                 <p className={clsx("whitespace-pre-wrap leading-relaxed text-[15px]", colorStyle.text, "opacity-90")}>{note.content}</p>
 
-                {/* Etiketler */}
                 {note.tags && note.tags.length > 0 && (
                    <div className="flex flex-wrap gap-2 mt-4">
                      {note.tags.map((tag, i) => (
@@ -542,10 +531,13 @@ export default function Home() {
                         e.stopPropagation();
                         shareNote(note);
                       }}
-                      className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50/50 rounded-full transition-colors"
-                      title="Apple Notlar'da Paylaş"
+                      className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50/50 rounded-full transition-colors group/share relative"
+                      title="Apple Notlar'a Gönder"
                     >
-                      <Share2 size={16} />
+                      <CloudUpload size={18} />
+                      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-[10px] rounded opacity-0 group-hover/share:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                        Apple Notlar'a Gönder
+                      </span>
                     </button>
                     <button
                       onClick={(e) => {
@@ -555,7 +547,7 @@ export default function Home() {
                       className="p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50/50 rounded-full transition-colors"
                       title="Düzenle"
                     >
-                      <PenLine size={16} />
+                      <PenLine size={18} />
                     </button>
                     <button
                       onClick={(e) => {
@@ -565,7 +557,7 @@ export default function Home() {
                       className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50/50 rounded-full transition-colors"
                       title="Sil"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={18} />
                     </button>
                   </div>
                 </div>
