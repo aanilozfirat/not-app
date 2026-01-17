@@ -1,65 +1,441 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useEffect, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Trash2, PenLine, Plus, Search, Pin, X, Check, LogOut, User, Lock, Sparkles } from "lucide-react";
+import clsx from "clsx";
+
+const COLORS = [
+  { id: "yellow", value: "bg-[#fff7d1]", border: "border-[#e6deaf]", text: "text-yellow-900" },
+  { id: "green", value: "bg-[#e2f6d3]", border: "border-[#cce5b8]", text: "text-green-900" },
+  { id: "blue", value: "bg-[#d4ebf7]", border: "border-[#b8d4e5]", text: "text-blue-900" },
+  { id: "purple", value: "bg-[#e9dff5]", border: "border-[#d1c2e0]", text: "text-purple-900" },
+  { id: "pink", value: "bg-[#fbe4e4]", border: "border-[#e8caca]", text: "text-pink-900" },
+  { id: "white", value: "bg-white", border: "border-gray-200", text: "text-gray-800" },
+];
+
+interface Note {
+  id: string;
+  title: string;
+  content: string;
+  color: string;
+  date: string;
+  isPinned?: boolean;
+}
 
 export default function Home() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+  const [currentUser, setCurrentUser] = useState<string | null>(null);
+  const [usernameInput, setUsernameInput] = useState("");
+  const [passwordInput, setPasswordInput] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [greeting, setGreeting] = useState("");
+
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [isInputExpanded, setIsInputExpanded] = useState(false);
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [selectedColor, setSelectedColor] = useState(COLORS[0]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem("active_user");
+    if (savedUser) setCurrentUser(savedUser);
+
+    // Saate göre selamlama
+    const hour = new Date().getHours();
+    if (hour < 6) setGreeting("İyi geceler");
+    else if (hour < 12) setGreeting("Günaydın");
+    else if (hour < 18) setGreeting("Tünaydın");
+    else setGreeting("İyi akşamlar");
+
+    setIsLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (currentUser) {
+      const savedNotes = localStorage.getItem(`notes_${currentUser}`);
+      if (savedNotes) setNotes(JSON.parse(savedNotes));
+      else setNotes([]);
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (isLoaded && currentUser) {
+      localStorage.setItem(`notes_${currentUser}`, JSON.stringify(notes));
+    }
+  }, [notes, isLoaded, currentUser]);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!usernameInput.trim()) {
+      setLoginError("Lütfen bir kullanıcı adı giriniz.");
+      return;
+    }
+    localStorage.setItem("active_user", usernameInput);
+    setCurrentUser(usernameInput);
+    setLoginError("");
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("active_user");
+    setCurrentUser(null);
+    setNotes([]);
+    setUsernameInput("");
+    setPasswordInput("");
+  };
+
+  const addNote = () => {
+    if (!content.trim() && !title.trim()) return;
+
+    if (editingNoteId) {
+      setNotes(notes.map(n => n.id === editingNoteId ? {
+        ...n,
+        title,
+        content,
+        color: selectedColor.id,
+      } : n));
+      setEditingNoteId(null);
+    } else {
+      const newNote: Note = {
+        id: Date.now().toString(),
+        title,
+        content,
+        color: selectedColor.id,
+        date: new Date().toLocaleDateString("tr-TR"),
+        isPinned: false,
+      };
+      setNotes([newNote, ...notes]);
+    }
+    setTitle("");
+    setContent("");
+    setIsInputExpanded(false);
+    setSelectedColor(COLORS[0]);
+  };
+
+  const deleteNote = (id: string) => {
+    setNotes(notes.filter((note) => note.id !== id));
+  };
+
+  const togglePin = (id: string) => {
+    setNotes(notes.map(n => n.id === id ? { ...n, isPinned: !n.isPinned } : n));
+  };
+
+  const startEditing = (note: Note) => {
+    setTitle(note.title);
+    setContent(note.content);
+    setSelectedColor(COLORS.find(c => c.id === note.color) || COLORS[0]);
+    setEditingNoteId(note.id);
+    setIsInputExpanded(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEdit = () => {
+    setTitle("");
+    setContent("");
+    setEditingNoteId(null);
+    setIsInputExpanded(false);
+    setSelectedColor(COLORS[0]);
+  };
+
+  const filteredNotes = useMemo(() => {
+    return notes
+      .filter(note =>
+        note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        note.content.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      .sort((a, b) => {
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        return Number(b.id) - Number(a.id);
+      });
+  }, [notes, searchTerm]);
+
+  const getColorClass = (id: string) => COLORS.find(c => c.id === id) || COLORS[0];
+
+  if (!isLoaded) return null;
+
+  if (!currentUser) {
+    return (
+      <main className="min-h-screen flex items-center justify-center p-4 bg-[#fdfcf8] relative overflow-hidden">
+        {/* Dekoratif Arkaplan Blob'ları */}
+        <div className="absolute top-0 left-0 w-96 h-96 bg-yellow-200/30 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-purple-200/30 rounded-full blur-3xl translate-x-1/3 translate-y-1/3" />
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="w-full max-w-md bg-white/80 backdrop-blur-xl rounded-3xl shadow-[0_8px_40px_rgba(0,0,0,0.08)] p-8 border border-white/50 relative z-10"
+        >
+          <div className="text-center mb-10">
+            <div className="w-20 h-20 bg-gradient-to-tr from-yellow-100 to-orange-50 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-inner rotate-3 transform hover:rotate-6 transition-transform">
+              <Sparkles className="w-10 h-10 text-yellow-600" />
+            </div>
+            <h1 className="text-3xl font-bold text-gray-800 tracking-tight">Hoş Geldiniz</h1>
+            <p className="text-gray-500 mt-3 text-lg font-light">Düşüncelerinizi saklamanın<br/>en zarif yolu.</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-gray-600 ml-1">Kullanıcı Adı</label>
+              <div className="relative group">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-yellow-500 transition-colors" />
+                <input
+                  type="text"
+                  value={usernameInput}
+                  onChange={(e) => setUsernameInput(e.target.value)}
+                  className="w-full pl-12 pr-4 py-4 bg-gray-50/50 border border-gray-200 rounded-2xl outline-none focus:border-yellow-400 focus:bg-white focus:ring-4 focus:ring-yellow-100/50 transition-all font-medium text-gray-700"
+                  placeholder="örn. anil"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-gray-600 ml-1">Şifre</label>
+              <div className="relative group">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-yellow-500 transition-colors" />
+                <input
+                  type="password"
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  className="w-full pl-12 pr-4 py-4 bg-gray-50/50 border border-gray-200 rounded-2xl outline-none focus:border-yellow-400 focus:bg-white focus:ring-4 focus:ring-yellow-100/50 transition-all font-medium text-gray-700"
+                  placeholder="••••••••"
+                />
+              </div>
+            </div>
+
+            {loginError && (
+              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-red-500 text-sm text-center font-medium bg-red-50 py-2 rounded-lg">
+                {loginError}
+              </motion.p>
+            )}
+
+            <button
+              type="submit"
+              className="w-full bg-gray-900 text-white py-4 rounded-2xl font-semibold text-lg hover:bg-black hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-gray-200 mt-4"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+              Giriş Yap
+            </button>
+          </form>
+        </motion.div>
       </main>
-    </div>
+    );
+  }
+
+  return (
+    <main className="min-h-screen px-4 py-8 md:px-8 max-w-7xl mx-auto selection:bg-yellow-100 selection:text-yellow-900">
+      <header className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-white rounded-2xl shadow-sm border border-gray-100 rotate-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-yellow-400 to-orange-300 rounded-lg flex items-center justify-center text-white font-bold text-xl">
+              N
+            </div>
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-gray-800 flex items-center gap-2">
+              {greeting}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-orange-600">{currentUser}</span>
+            </h1>
+            <p className="text-sm text-gray-400 font-medium">Bugün neler planlıyorsun?</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="relative w-full md:w-72 group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-yellow-500 transition-colors" />
+            <input
+              type="text"
+              placeholder="Notlarını ara..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-11 pr-4 py-2.5 bg-white border border-gray-200 rounded-full text-sm outline-none focus:border-yellow-400 focus:ring-4 focus:ring-yellow-50 transition-all shadow-sm"
+            />
+          </div>
+          <button
+            onClick={handleLogout}
+            className="p-2.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-all border border-transparent hover:border-red-100"
+            title="Çıkış Yap"
+          >
+            <LogOut size={20} />
+          </button>
+        </div>
+      </header>
+
+      <div className="flex justify-center mb-16 relative z-10">
+        <motion.div
+          layout
+          className={clsx(
+            "w-full max-w-xl bg-white rounded-3xl shadow-[0_20px_40px_rgb(0,0,0,0.04)] overflow-hidden border border-gray-100 transition-colors duration-500",
+            selectedColor.id !== 'white' && getColorClass(selectedColor.id).value,
+            editingNoteId && "ring-4 ring-yellow-400/20"
+          )}
+        >
+          {isInputExpanded && (
+            <div className="flex items-center px-1">
+              <input
+                type="text"
+                placeholder="Başlık"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full px-6 pt-6 pb-2 bg-transparent text-xl font-bold text-gray-800 placeholder-gray-400/60 outline-none"
+              />
+              {editingNoteId && (
+                <button onClick={cancelEdit} className="mr-5 mt-4 p-2 hover:bg-black/5 rounded-full text-gray-500 transition-colors" title="İptal">
+                  <X size={20} />
+                </button>
+              )}
+            </div>
+          )}
+
+          <textarea
+            placeholder={editingNoteId ? "Notu düzenle..." : "Aklından geçenler..."}
+            value={content}
+            onClick={() => setIsInputExpanded(true)}
+            onChange={(e) => setContent(e.target.value)}
+            className="w-full px-6 py-5 bg-transparent text-gray-700 placeholder-gray-400/60 resize-none outline-none min-h-[60px] text-lg leading-relaxed"
+            rows={isInputExpanded ? 4 : 1}
+          />
+
+          <AnimatePresence>
+            {isInputExpanded && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="px-5 pb-5 flex items-center justify-between pt-2 mx-1"
+              >
+                <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                  {COLORS.map((color) => (
+                    <button
+                      key={color.id}
+                      onClick={() => setSelectedColor(color)}
+                      className={clsx(
+                        "w-8 h-8 rounded-full border-2 transition-transform flex-shrink-0 relative",
+                        color.value,
+                        color.border,
+                        selectedColor.id === color.id ? "scale-110 ring-2 ring-gray-400 ring-offset-2 border-transparent" : "hover:scale-110 border-transparent hover:border-black/10"
+                      )}
+                      title={color.id}
+                    >
+                      {selectedColor.id === color.id && <Check size={14} className="absolute inset-0 m-auto text-black/50" />}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={addNote}
+                  className={clsx(
+                    "flex items-center gap-2 font-semibold px-6 py-2.5 rounded-full transition-all text-sm shrink-0 ml-4 shadow-lg hover:shadow-xl active:scale-95",
+                    editingNoteId
+                      ? "bg-gray-900 text-white hover:bg-black"
+                      : "bg-gray-900 text-white hover:bg-black"
+                  )}
+                >
+                  {editingNoteId ? "Güncelle" : <><Plus size={18} /> Ekle</>}
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+      </div>
+
+      {/* Masonry Layout */}
+      <div className="masonry-grid pb-20">
+        <AnimatePresence mode="popLayout">
+          {filteredNotes.map((note) => {
+            const colorStyle = getColorClass(note.color);
+            return (
+              <motion.div
+                layout
+                initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                key={note.id}
+                onClick={() => startEditing(note)}
+                className={clsx(
+                  "break-inside-avoid mb-6 relative group rounded-3xl p-6 border shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1",
+                  colorStyle.value,
+                  colorStyle.border,
+                  note.isPinned && "ring-2 ring-black/5"
+                )}
+              >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    togglePin(note.id);
+                  }}
+                  className={clsx(
+                    "absolute top-4 right-4 p-2 rounded-full transition-all duration-200 z-10",
+                    note.isPinned
+                      ? "bg-black/10 text-gray-800 opacity-100"
+                      : "opacity-0 group-hover:opacity-100 hover:bg-black/5 text-gray-500"
+                  )}
+                  title={note.isPinned ? "Sabitlemeyi kaldır" : "Sabitle"}
+                >
+                  <Pin size={16} className={clsx(note.isPinned && "fill-current")} />
+                </button>
+
+                {note.title && (
+                  <h3 className={clsx("font-bold text-xl mb-3 leading-tight pr-8", colorStyle.text)}>{note.title}</h3>
+                )}
+                <p className={clsx("whitespace-pre-wrap leading-relaxed text-[15px]", colorStyle.text, "opacity-90")}>{note.content}</p>
+
+                <div className="mt-6 flex items-center justify-between pt-4 border-t border-black/5">
+                  <span className="text-xs font-semibold opacity-60 flex items-center gap-1.5 uppercase tracking-wide">
+                    {note.date}
+                    {note.isPinned && <span className="bg-black/10 px-2 py-0.5 rounded-full text-[10px]">SABİT</span>}
+                  </span>
+
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startEditing(note);
+                      }}
+                      className="p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50/50 rounded-full transition-colors"
+                      title="Düzenle"
+                    >
+                      <PenLine size={16} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteNote(note.id);
+                      }}
+                      className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50/50 rounded-full transition-colors"
+                      title="Sil"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      </div>
+
+      {filteredNotes.length === 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="text-center text-gray-300 mt-12"
+        >
+          <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
+            {searchTerm ? (
+              <Search className="w-10 h-10 opacity-20 text-gray-500" />
+            ) : (
+              <Sparkles className="w-10 h-10 opacity-20 text-yellow-500" />
+            )}
+          </div>
+          <p className="text-lg font-medium text-gray-400">
+            {searchTerm ? "Sonuç bulunamadı." : "Henüz hiç notun yok."}
+          </p>
+          {!searchTerm && <p className="text-sm text-gray-300 mt-1">Hadi, güzel bir şeyler yaz.</p>}
+        </motion.div>
+      )}
+    </main>
   );
 }
